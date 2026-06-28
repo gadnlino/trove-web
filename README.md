@@ -15,7 +15,7 @@ Two independent axes:
   S3-compatible bucket (S3 / R2 / B2 / MinIO), or your own cloud drive (OAuth).
 - **Client-side processing** — thumbnails for images and videos are generated in
   the browser (`OffscreenCanvas`, `ffmpeg.wasm`/`<video>`+canvas), cached in OPFS,
-  and indexed in IndexedDB so the gallery stays fast and works offline.
+  and indexed in IndexedDB so the gallery stays fast.
 
 The UI and the thumbnail pipeline only ever talk to the `StorageProvider`
 interface plus a declared capability model (signed URLs, range requests, change
@@ -23,7 +23,7 @@ events) — never to a concrete backend.
 
 ## Planned stack
 
-- TypeScript + React, built as an installable PWA (offline-capable)
+- TypeScript + React, served as a static website (client-side web app)
 - IndexedDB (catalog) · OPFS (thumbnail cache) · Web Workers (processing)
 - Optional `ffmpeg.wasm` for video formats the browser can't decode natively
 
@@ -39,7 +39,7 @@ specification for the browser version lives under `openspec/`:
   - `proposal.md` — why & what
   - `design.md` — technical approach and trade-offs
   - `specs/` — requirements (capabilities: `storage-providers`, `media-catalog`,
-    `thumbnail-generation`, `media-viewing`, `pwa-shell`)
+    `thumbnail-generation`, `media-viewing`, `web-app-shell`)
   - `tasks.md` — implementation checklist
 
 Useful commands:

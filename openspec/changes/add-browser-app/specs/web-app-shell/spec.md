@@ -1,17 +1,18 @@
 ## ADDED Requirements
 
-### Requirement: Installable offline app shell
-The system SHALL be an installable Progressive Web App whose shell loads and
-operates offline, allowing the user to browse already-indexed media and view
-cached thumbnails without a network connection.
+### Requirement: Hosted web application shell
+The system SHALL be delivered as a website that loads and runs in the user's
+browser from a URL, with all media-management logic executing client-side and no
+application backend. The shell SHALL be responsive across desktop and mobile
+browser viewports.
 
-#### Scenario: Installing the app
-- **WHEN** the user installs the PWA
-- **THEN** it launches in a standalone window and loads its shell from cache
+#### Scenario: Opening the website
+- **WHEN** the user navigates to the application URL in a supported browser
+- **THEN** the app shell loads and renders the gallery for any already-mounted providers
 
-#### Scenario: Offline browsing
-- **WHEN** the user opens the app with no network connection
-- **THEN** the gallery renders from the index and serves cached thumbnails, and media that requires the backend is clearly marked as unavailable
+#### Scenario: No application backend
+- **WHEN** the app needs media or metadata
+- **THEN** it obtains them from the user's mounted providers and the local catalog, and from no application server
 
 ### Requirement: On-device mount and credential storage
 The system SHALL store all mount configuration and credentials only on the user's
@@ -20,7 +21,7 @@ chosen backend.
 
 #### Scenario: Persisting a mount locally
 - **WHEN** the user configures a mount with credentials
-- **THEN** the configuration and credentials are persisted on-device and reused on later sessions
+- **THEN** the configuration and credentials are persisted on-device and reused on later visits in the same browser
 
 #### Scenario: No third-party transmission
 - **WHEN** the app communicates over the network

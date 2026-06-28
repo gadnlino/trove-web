@@ -27,9 +27,10 @@ hosting cost, and the user's credentials never leave their device.
 - Introduce **media viewing**: a responsive gallery grid plus full-resolution
   image view and seekable video playback (HTTP range / signed URLs, with proxy
   fallback).
-- Introduce a **PWA app shell**: installable, offline-capable, with local-only
-  storage of mount configuration and credentials, and a settings surface to
-  manage mounts.
+- Introduce a **hosted web app shell**: a website (no application backend)
+  accessed via URL, responsive across desktop and mobile browsers, with
+  local-only storage of mount configuration and credentials, and a settings
+  surface to manage mounts.
 
 ## Capabilities
 
@@ -38,17 +39,19 @@ hosting cost, and the user's credentials never leave their device.
 - `media-catalog`: local IndexedDB index of mounted media plus listing, browsing, search, and filtering.
 - `thumbnail-generation`: client-side image/video thumbnail creation, OPFS caching, and event-vs-on-demand generation strategy.
 - `media-viewing`: gallery grid, full-resolution image viewing, and seekable video playback.
-- `pwa-shell`: installable offline shell, local credential/mount management, and settings.
+- `web-app-shell`: hosted website shell, local credential/mount management, and settings.
 
 ### Modified Capabilities
 <!-- None — this is the initial set of capabilities for the project. -->
 
 ## Impact
 
-- **New project**, browser-only. No application server; static hosting only.
+- **New project**, a client-side web app served as a static website. No
+  application server; static hosting only. Not offline-first and not an
+  installable PWA — it is accessed from a URL in the browser.
 - Browser API dependencies: File System Access API (Chromium), OPFS, IndexedDB,
-  OffscreenCanvas, Web Workers, Service Worker; `ffmpeg.wasm` as an optional
-  dependency for non-natively-decodable video formats.
+  OffscreenCanvas, Web Workers; `ffmpeg.wasm` as an optional dependency for
+  non-natively-decodable video formats.
 - Backend prerequisites are limited to the user's own storage (e.g. CORS must be
   enabled on a mounted S3-compatible bucket). No secrets are managed by the app.
 - A future desktop (Tauri) packaging can reuse the same `StorageProvider` and UI

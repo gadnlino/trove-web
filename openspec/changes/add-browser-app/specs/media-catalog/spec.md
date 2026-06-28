@@ -30,7 +30,7 @@ and SHALL not block browsing.
 - **THEN** the system removes that item (and its cached thumbnail) from the index
 
 #### Scenario: Resuming an interrupted scan
-- **WHEN** a scan is interrupted (tab closed or offline) and the app reopens
+- **WHEN** a scan is interrupted (tab closed or the connection drops) and the app reopens
 - **THEN** the scan resumes from where it stopped rather than restarting from the beginning
 
 ### Requirement: Search and filtering

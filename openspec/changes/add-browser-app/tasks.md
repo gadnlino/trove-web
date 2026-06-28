@@ -1,7 +1,7 @@
 ## 1. Project scaffold
 
-- [ ] 1.1 Set up TypeScript + React + Vite PWA project with linting and formatting
-- [ ] 1.2 Configure the service worker and web app manifest for installability and offline shell
+- [ ] 1.1 Set up TypeScript + React + Vite web app project with linting and formatting
+- [ ] 1.2 Configure the static build and SPA routing for deployment as a hosted website
 - [ ] 1.3 Establish the Web Worker build pipeline for off-main-thread processing
 
 ## 2. Storage providers
@@ -33,11 +33,12 @@
 - [ ] 5.2 Build full-resolution image viewing with signed-URL and `read` fallback paths
 - [ ] 5.3 Build seekable video playback with range support and a buffered fallback
 
-## 6. PWA shell and settings
+## 6. Web app shell and settings
 
 - [ ] 6.1 Implement on-device storage of mount configuration and credentials
 - [ ] 6.2 Build the mount management settings (add, inspect, remove with cleanup)
-- [ ] 6.3 Implement offline behavior: index-only browsing and clear marking of backend-dependent media
+- [ ] 6.3 Implement clear status and empty states when a mounted backend is unreachable
+- [ ] 6.4 Set up static hosting/deployment of the website
 
 ## 7. Validation
 

@@ -1,6 +1,7 @@
 ## Context
 
-Trove's browser version is a fully client-side PWA. There is no application
+Trove's browser version is a fully client-side web application served as a static
+website (not offline-first, not an installable PWA). There is no application
 backend; the only server-side dependency is the user's own storage. This shapes
 every decision: secrets stay on-device, processing happens in the browser, and
 the storage location is chosen by the user at runtime.

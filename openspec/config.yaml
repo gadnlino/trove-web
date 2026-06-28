@@ -7,7 +7,7 @@ context: |
   both the data and the storage location.
 
   Tech stack (browser version):
-    - TypeScript + React, built as a PWA (installable, offline-capable)
+    - TypeScript + React, served as a static website (client-side web app)
     - State/index in IndexedDB; thumbnail cache in OPFS
     - Image thumbnails via OffscreenCanvas; video thumbnails via ffmpeg.wasm or
       an HTMLVideoElement + canvas frame capture
