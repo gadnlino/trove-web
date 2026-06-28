@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Trove is a privacy-first personal photo and video manager that runs entirely
+  in the user's browser (no application backend). It is an alternative to cloud
+  galleries like Instagram/Google Photos where the user keeps full ownership of
+  both the data and the storage location.
+
+  Tech stack (browser version):
+    - TypeScript + React, built as a PWA (installable, offline-capable)
+    - State/index in IndexedDB; thumbnail cache in OPFS
+    - Image thumbnails via OffscreenCanvas; video thumbnails via ffmpeg.wasm or
+      an HTMLVideoElement + canvas frame capture
+    - Web Workers for off-main-thread processing
+
+  Core architectural principle: a pluggable StorageProvider abstraction lets the
+  user "mount" different filesystems/backends (local folder via File System
+  Access API, any S3-compatible bucket, or their own cloud drive). The UI and
+  the thumbnail pipeline never talk to a concrete storage; they talk to the
+  provider interface plus a declared capability model (signed URLs, range
+  requests, change events).
+
+  Conventions: conventional commits; kebab-case capability names.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
