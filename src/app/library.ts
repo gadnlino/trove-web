@@ -1,5 +1,11 @@
 import type { MountRecord, S3Mount, LocalFolderMount, LocalSnapshotMount } from "../db/database";
-import type { S3Config } from "../storage/adapters/S3CompatibleAdapter";
+import {
+  S3CompatibleAdapter,
+  type S3Config,
+  type S3PublicConfig,
+  type S3Secret,
+} from "../storage/adapters/S3CompatibleAdapter";
+import { vault } from "../storage/credentialVault";
 import { newMountId, removeMount, saveMount } from "../storage/mountStore";
 import { deriveRootFolderName, pickDirectoryFiles } from "../storage/folderPicker";
 import { buildFileMap, hasSnapshot, setSnapshot } from "../storage/snapshotRegistry";
@@ -36,7 +42,7 @@ async function addFileSystemAccessMount(): Promise<MountRecord> {
     handle,
   };
   await saveMount(mount);
-  providerManager.register(mount);
+  await providerManager.register(mount);
   return mount;
 }
 
@@ -50,7 +56,7 @@ async function addSnapshotMount(): Promise<MountRecord> {
   };
   setSnapshot(mount.id, buildFileMap(files));
   await saveMount(mount);
-  providerManager.register(mount);
+  await providerManager.register(mount);
   return mount;
 }
 
@@ -74,17 +80,31 @@ export async function reconnectSnapshotMount(
 }
 
 export async function addS3Mount(name: string, s3: S3Config): Promise<MountRecord> {
+  const { accessKeyId, secretAccessKey, ...rest } = s3;
+  const secret: S3Secret = { accessKeyId, secretAccessKey };
+  const publicConfig: S3PublicConfig = rest;
+
+  // Validate access before persisting the mount.
+  await new S3CompatibleAdapter("probe", s3).list("");
+
   const mount: S3Mount = {
     id: newMountId(),
     kind: "s3-compatible",
     name: name || s3.bucket,
     createdAt: Date.now(),
-    s3,
+    s3: publicConfig,
   };
-  // Validate access before persisting the mount.
-  const provider = providerManager.register(mount);
-  await provider.list("");
+  if (await vault.hasVault()) {
+    if (vault.isLocked()) {
+      throw new Error("Unlock your credential vault before adding this mount.");
+    }
+    mount.secret = await vault.encrypt(secret);
+  } else {
+    // No vault yet: store plaintext and let migration encrypt it on setup.
+    mount.legacySecret = secret;
+  }
   await saveMount(mount);
+  await providerManager.register(mount);
   return mount;
 }
 

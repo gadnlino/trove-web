@@ -1,7 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { MediaType, ProviderKind } from "../core/types";
-import type { S3Config } from "../storage/adapters/S3CompatibleAdapter";
+import type { S3PublicConfig, S3Secret } from "../storage/adapters/S3CompatibleAdapter";
 import type { PkceConfig, TokenSet } from "../storage/oauth/pkce";
+import type { EnvelopeData } from "../crypto/envelope";
 
 /** A media item as stored in the local catalog. */
 export interface MediaItem {
@@ -49,14 +50,44 @@ export interface LocalSnapshotMount extends BaseMount {
 
 export interface S3Mount extends BaseMount {
   kind: "s3-compatible";
-  s3: S3Config;
+  s3: S3PublicConfig;
+  /** Encrypted S3Secret. Present once the vault has been set up. */
+  secret?: EnvelopeData;
+  /** Plaintext secret awaiting encryption (migration only). */
+  legacySecret?: S3Secret;
 }
 
 export interface UserDriveMount extends BaseMount {
   kind: "user-drive";
   oauth: PkceConfig;
-  tokens?: TokenSet;
   rootFolderId?: string;
+  /** Encrypted TokenSet. Present once the vault has been set up. */
+  tokensEnc?: EnvelopeData;
+  /** Plaintext tokens awaiting encryption (migration only). */
+  legacyTokens?: TokenSet;
+}
+
+/** A factor that can unlock the vault key (which it wraps). */
+export type VaultFactor =
+  | {
+      kind: "passphrase";
+      salt: string;
+      iterations: number;
+      wrapped: EnvelopeData;
+    }
+  | {
+      kind: "webauthn-prf";
+      credentialId: string;
+      salt: string;
+      wrapped: EnvelopeData;
+    };
+
+/** Singleton vault configuration: enrolled factors + an unlock check token. */
+export interface VaultConfig {
+  id: "vault";
+  /** Encryption of a known constant, used to verify a correct unlock. */
+  check: EnvelopeData;
+  factors: VaultFactor[];
 }
 
 export type MountRecord = LocalFolderMount | LocalSnapshotMount | S3Mount | UserDriveMount;
@@ -92,24 +123,33 @@ interface TroveDB extends DBSchema {
     key: string;
     value: ScanState;
   };
+  vault: {
+    key: string;
+    value: VaultConfig;
+  };
 }
 
 const DB_NAME = "trove";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<TroveDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<TroveDB>> {
   if (!dbPromise) {
     dbPromise = openDB<TroveDB>(DB_NAME, DB_VERSION, {
-      upgrade(database) {
-        database.createObjectStore("mounts", { keyPath: "id" });
-        const media = database.createObjectStore("media", { keyPath: "id" });
-        media.createIndex("by-mount", "mountId");
-        media.createIndex("by-type", "mediaType");
-        media.createIndex("by-capturedAt", "capturedAt");
-        media.createIndex("by-thumbStatus", "thumbStatus");
-        database.createObjectStore("scanState", { keyPath: "mountId" });
+      upgrade(database, oldVersion) {
+        if (oldVersion < 1) {
+          database.createObjectStore("mounts", { keyPath: "id" });
+          const media = database.createObjectStore("media", { keyPath: "id" });
+          media.createIndex("by-mount", "mountId");
+          media.createIndex("by-type", "mediaType");
+          media.createIndex("by-capturedAt", "capturedAt");
+          media.createIndex("by-thumbStatus", "thumbStatus");
+          database.createObjectStore("scanState", { keyPath: "mountId" });
+        }
+        if (oldVersion < 2) {
+          database.createObjectStore("vault", { keyPath: "id" });
+        }
       },
     });
   }

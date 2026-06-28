@@ -18,9 +18,15 @@ import { getScanState } from "../catalog/scanner";
 import { queryItems, type CatalogFilter } from "../catalog/catalog";
 import type { MediaItem } from "../db/database";
 import { beginAuthorization, completeAuthorization, type PkceConfig } from "../storage/oauth/pkce";
+import { vault } from "../storage/credentialVault";
+import {
+  encryptPlaintextCredentials,
+  hasUnprotectedCredentials,
+} from "../storage/credentialMigration";
 import { MediaGrid } from "./MediaGrid";
 import { MediaViewer } from "./MediaViewer";
 import { Settings, type ScanInfo } from "./Settings";
+import type { VaultPanelProps, VaultState } from "./VaultPanel";
 
 const PENDING_DRIVE_KEY = "trove.pendingDrive";
 
@@ -43,6 +49,13 @@ export function App() {
   const [scanInfo, setScanInfo] = useState<Record<string, ScanInfo>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vaultState, setVaultState] = useState<VaultState>({
+    exists: false,
+    locked: true,
+    factors: [],
+    prfSupported: false,
+    unprotected: false,
+  });
 
   const [type, setType] = useState<MediaType | "all">("all");
   const [mountFilter, setMountFilter] = useState<string>("all");
@@ -65,6 +78,16 @@ export function App() {
 
   const reloadMounts = useCallback(async () => {
     setMounts(await listMounts());
+  }, []);
+
+  const refreshVault = useCallback(async () => {
+    setVaultState({
+      exists: await vault.hasVault(),
+      locked: vault.isLocked(),
+      factors: await vault.factorKinds(),
+      prfSupported: vault.prfSupported(),
+      unprotected: await hasUnprotectedCredentials(),
+    });
   }, []);
 
   const runScan = useCallback(
@@ -124,13 +147,78 @@ export function App() {
     [mounts, runReconnect]
   );
 
+  // After unlocking: build gated providers, refresh, and scan credentialed mounts.
+  const afterUnlock = useCallback(async () => {
+    await providerManager.onUnlock();
+    await reloadMounts();
+    await reloadItems();
+    for (const mount of await listMounts()) {
+      if (mount.kind === "s3-compatible" || mount.kind === "user-drive") {
+        const state = await getScanState(mount.id);
+        if (!state || state.status !== "done") void runScan(mount);
+      }
+    }
+  }, [reloadItems, reloadMounts, runScan]);
+
+  const runVaultOp = useCallback(
+    async (fn: () => Promise<void>, after?: () => Promise<void>) => {
+      setBusy("vault");
+      setError(null);
+      try {
+        await fn();
+        if (after) await after();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        await refreshVault();
+        setBusy(null);
+      }
+    },
+    [refreshVault]
+  );
+
+  const vaultProps = useMemo<VaultPanelProps>(
+    () => ({
+      state: vaultState,
+      busy: busy === "vault",
+      onSetupPassphrase: (p) =>
+        void runVaultOp(async () => {
+          await vault.setupWithPassphrase(p);
+          await encryptPlaintextCredentials();
+        }, afterUnlock),
+      onAddPassphrase: (p) => void runVaultOp(() => vault.setupWithPassphrase(p)),
+      onAddBiometric: () =>
+        void runVaultOp(async () => {
+          const ok = await vault.addPrfFactor("Trove");
+          if (!ok) throw new Error("Biometrics or a security key are not available here.");
+          await encryptPlaintextCredentials();
+        }, afterUnlock),
+      onUnlockPassphrase: (p) => void runVaultOp(() => vault.unlockWithPassphrase(p), afterUnlock),
+      onUnlockBiometric: () => void runVaultOp(() => vault.unlockWithPrf(), afterUnlock),
+      onLock: () =>
+        void runVaultOp(async () => {
+          vault.lock();
+          providerManager.onLock();
+          await reloadMounts();
+          await reloadItems();
+        }),
+    }),
+    [vaultState, busy, runVaultOp, afterUnlock, reloadItems, reloadMounts]
+  );
+
   // Initial load: handle any OAuth redirect, load library, resume scans.
   useEffect(() => {
+    // Keep the UI in sync when the vault auto-locks (idle) or changes.
+    vault.setOnChange(() => {
+      if (vault.isLocked()) providerManager.onLock();
+      void refreshVault();
+    });
     (async () => {
       await initLibrary();
       await handleOAuthRedirect(runScan);
       await reloadMounts();
       await reloadItems();
+      await refreshVault();
       for (const mount of await listMounts()) {
         if (needsReconnect(mount)) {
           setScanInfo((p) => ({
@@ -166,10 +254,17 @@ export function App() {
           name: pending.name,
           createdAt: Date.now(),
           oauth: pending.oauth,
-          tokens,
         };
+        if (await vault.hasVault()) {
+          if (vault.isLocked()) {
+            throw new Error("Unlock your credential vault before connecting Drive.");
+          }
+          mount.tokensEnc = await vault.encrypt(tokens);
+        } else {
+          mount.legacyTokens = tokens;
+        }
         await saveMount(mount);
-        providerManager.register(mount);
+        await providerManager.register(mount);
         void scan(mount);
       }
     } catch (err) {
@@ -201,6 +296,7 @@ export function App() {
       try {
         const mount = await addS3Mount(name, cfg);
         await reloadMounts();
+        await refreshVault();
         void runScan(mount);
       } catch (err) {
         setError(
@@ -211,7 +307,7 @@ export function App() {
         setBusy(null);
       }
     },
-    [reloadMounts, runScan]
+    [reloadMounts, runScan, refreshVault]
   );
 
   const onConnectDrive = useCallback((name: string, clientId: string) => {
@@ -230,8 +326,9 @@ export function App() {
       });
       await reloadMounts();
       await reloadItems();
+      await refreshVault();
     },
-    [reloadItems, reloadMounts]
+    [reloadItems, reloadMounts, refreshVault]
   );
 
   return (
@@ -302,6 +399,7 @@ export function App() {
           features={feat}
           scanInfo={scanInfo}
           busy={busy}
+          vault={vaultProps}
           onAddLocal={onAddLocal}
           onAddS3={onAddS3}
           onConnectDrive={onConnectDrive}

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { LocalSnapshotAdapter, SnapshotNotConnectedError } from "./LocalSnapshotAdapter";
 import { buildFileMap, clearSnapshot, setSnapshot } from "../snapshotRegistry";
-import { createProvider } from "../registry";
+import { createCredentialFreeProvider } from "../registry";
 
 function file(name: string, bytes: number[], type = "image/jpeg"): File {
   return new File([new Uint8Array(bytes)], name, { type });
@@ -62,14 +62,14 @@ describe("LocalSnapshotAdapter", () => {
 
 describe("provider selection", () => {
   it("instantiates a LocalSnapshotAdapter for a local-snapshot mount", () => {
-    const provider = createProvider({
+    const provider = createCredentialFreeProvider({
       id: "m",
       kind: "local-snapshot",
       name: "Folder",
       createdAt: 0,
     });
-    expect(provider.kind).toBe("local-snapshot");
-    expect(provider.capabilities).toEqual({
+    expect(provider?.kind).toBe("local-snapshot");
+    expect(provider?.capabilities).toEqual({
       signedUrls: false,
       rangeRequests: true,
       changeEvents: false,

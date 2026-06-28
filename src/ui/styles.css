@@ -364,3 +364,46 @@ input {
   font-size: 12px;
   overflow-x: auto;
 }
+
+.banner-warn {
+  background: rgba(255, 196, 0, 0.12);
+  border: 1px solid rgba(255, 196, 0, 0.4);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.vault-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.pill-locked {
+  background: rgba(255, 93, 93, 0.15);
+  color: var(--danger);
+}
+
+.pill-unlocked {
+  background: rgba(80, 200, 120, 0.15);
+  color: #4ec97a;
+}
+
+.vault-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.error-text {
+  color: var(--danger);
+}

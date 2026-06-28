@@ -18,15 +18,23 @@ import type {
 import { contentTypeOf, mediaTypeOf } from "../../core/media";
 import type { StorageProvider } from "../StorageProvider";
 
-export interface S3Config {
+/** Non-secret S3 connection fields, safe to persist in plaintext. */
+export interface S3PublicConfig {
   endpoint?: string; // omit for AWS S3; set for R2/B2/MinIO
   region: string; // e.g. "us-east-1", or "auto" for R2
   bucket: string;
-  accessKeyId: string;
-  secretAccessKey: string;
   prefix?: string; // optional key prefix to scope the mount
   forcePathStyle?: boolean; // true for MinIO and many S3-compatibles
 }
+
+/** Sensitive S3 fields, encrypted at rest. */
+export interface S3Secret {
+  accessKeyId: string;
+  secretAccessKey: string;
+}
+
+/** Full runtime config the adapter needs (public fields + decrypted secret). */
+export type S3Config = S3PublicConfig & S3Secret;
 
 /**
  * One adapter for every S3-compatible service (AWS S3, Cloudflare R2,

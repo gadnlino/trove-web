@@ -3,6 +3,7 @@ import type { MountRecord } from "../db/database";
 import type { S3Config } from "../storage/adapters/S3CompatibleAdapter";
 import type { BrowserFeatures } from "../core/features";
 import { needsReconnect } from "../app/library";
+import { VaultPanel, type VaultPanelProps } from "./VaultPanel";
 
 export interface ScanInfo {
   status: string;
@@ -14,6 +15,7 @@ interface SettingsProps {
   features: BrowserFeatures;
   scanInfo: Record<string, ScanInfo>;
   busy: string | null;
+  vault: VaultPanelProps;
   onAddLocal: () => void;
   onAddS3: (name: string, cfg: S3Config) => void;
   onConnectDrive: (name: string, clientId: string) => void;
@@ -96,6 +98,8 @@ export function Settings(props: SettingsProps) {
           <S3Form busy={busy} onSubmit={props.onAddS3} />
           <DriveForm busy={busy} onSubmit={props.onConnectDrive} />
         </section>
+
+        <VaultPanel {...props.vault} />
       </div>
     </div>
   );

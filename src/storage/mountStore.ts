@@ -1,5 +1,5 @@
-import { db, type MountRecord } from "../db/database";
-import type { TokenSet } from "./oauth/pkce";
+import { db, type MountRecord, type VaultConfig } from "../db/database";
+import type { EnvelopeData } from "../crypto/envelope";
 
 /**
  * On-device storage of mount configuration and credentials. Everything lives in
@@ -23,13 +23,27 @@ export async function saveMount(mount: MountRecord): Promise<void> {
   await (await db()).put("mounts", mount);
 }
 
-export async function updateDriveTokens(id: string, tokens: TokenSet): Promise<void> {
+/** Persist refreshed Drive tokens as an encrypted blob. */
+export async function updateDriveTokens(id: string, tokensEnc: EnvelopeData): Promise<void> {
   const database = await db();
   const mount = await database.get("mounts", id);
   if (mount && mount.kind === "user-drive") {
-    mount.tokens = tokens;
+    mount.tokensEnc = tokensEnc;
+    mount.legacyTokens = undefined;
     await database.put("mounts", mount);
   }
+}
+
+export async function getVaultConfig(): Promise<VaultConfig | undefined> {
+  return (await db()).get("vault", "vault");
+}
+
+export async function putVaultConfig(config: VaultConfig): Promise<void> {
+  await (await db()).put("vault", config);
+}
+
+export async function deleteVaultConfig(): Promise<void> {
+  await (await db()).delete("vault", "vault");
 }
 
 /** Remove a mount along with all of its catalog entries. */
