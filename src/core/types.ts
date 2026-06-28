@@ -60,4 +60,4 @@ export interface ListResult {
   cursor?: string;
 }
 
-export type ProviderKind = "local-folder" | "s3-compatible" | "user-drive";
+export type ProviderKind = "local-folder" | "local-snapshot" | "s3-compatible" | "user-drive";

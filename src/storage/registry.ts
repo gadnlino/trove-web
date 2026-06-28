@@ -3,6 +3,7 @@ import { getMount, updateDriveTokens } from "./mountStore";
 import { refreshTokens } from "./oauth/pkce";
 import type { StorageProvider } from "./StorageProvider";
 import { LocalFolderAdapter } from "./adapters/LocalFolderAdapter";
+import { LocalSnapshotAdapter } from "./adapters/LocalSnapshotAdapter";
 import { S3CompatibleAdapter } from "./adapters/S3CompatibleAdapter";
 import { UserDriveAdapter } from "./adapters/UserDriveAdapter";
 
@@ -15,6 +16,8 @@ export function createProvider(mount: MountRecord): StorageProvider {
   switch (mount.kind) {
     case "local-folder":
       return new LocalFolderAdapter(mount.id, mount.handle);
+    case "local-snapshot":
+      return new LocalSnapshotAdapter(mount.id);
     case "s3-compatible":
       return new S3CompatibleAdapter(mount.id, mount.s3);
     case "user-drive":

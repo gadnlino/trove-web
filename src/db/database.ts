@@ -38,6 +38,15 @@ export interface LocalFolderMount extends BaseMount {
   handle: FileSystemDirectoryHandle;
 }
 
+/**
+ * A local folder mounted via the universal `webkitdirectory` picker. No file
+ * handle can be persisted, so only metadata is stored; the byte source (an
+ * in-memory file map) is rebuilt when the user reconnects the folder.
+ */
+export interface LocalSnapshotMount extends BaseMount {
+  kind: "local-snapshot";
+}
+
 export interface S3Mount extends BaseMount {
   kind: "s3-compatible";
   s3: S3Config;
@@ -50,7 +59,7 @@ export interface UserDriveMount extends BaseMount {
   rootFolderId?: string;
 }
 
-export type MountRecord = LocalFolderMount | S3Mount | UserDriveMount;
+export type MountRecord = LocalFolderMount | LocalSnapshotMount | S3Mount | UserDriveMount;
 
 export interface ScanState {
   mountId: string;

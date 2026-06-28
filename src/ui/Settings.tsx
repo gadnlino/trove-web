@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { MountRecord } from "../db/database";
 import type { S3Config } from "../storage/adapters/S3CompatibleAdapter";
 import type { BrowserFeatures } from "../core/features";
+import { needsReconnect } from "../app/library";
 
 export interface ScanInfo {
   status: string;
@@ -18,6 +19,7 @@ interface SettingsProps {
   onConnectDrive: (name: string, clientId: string) => void;
   onRemove: (id: string) => void;
   onRescan: (mount: MountRecord) => void;
+  onReconnect: (mount: MountRecord) => void;
   onClose: () => void;
 }
 
@@ -47,6 +49,7 @@ export function Settings(props: SettingsProps) {
           {mounts.length === 0 && <p className="muted">No storage mounted yet.</p>}
           {mounts.map((m) => {
             const info = scanInfo[m.id];
+            const reconnect = needsReconnect(m);
             return (
               <div className="mount-row" key={m.id}>
                 <div>
@@ -57,9 +60,15 @@ export function Settings(props: SettingsProps) {
                   </div>
                 </div>
                 <div className="row-actions">
-                  <button type="button" className="btn-ghost" onClick={() => props.onRescan(m)}>
-                    Rescan
-                  </button>
+                  {reconnect ? (
+                    <button type="button" className="btn" onClick={() => props.onReconnect(m)}>
+                      Reconnect
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-ghost" onClick={() => props.onRescan(m)}>
+                      Rescan
+                    </button>
+                  )}
                   <button type="button" className="btn-danger" onClick={() => props.onRemove(m.id)}>
                     Remove
                   </button>
@@ -74,16 +83,14 @@ export function Settings(props: SettingsProps) {
 
           <div className="add-block">
             <strong>Local folder</strong>
-            {features.fileSystemAccess ? (
-              <button type="button" className="btn" disabled={!!busy} onClick={props.onAddLocal}>
-                Choose folder…
-              </button>
-            ) : (
-              <p className="muted small">
-                Not supported in this browser. Use Chrome or Edge for local folders, or mount an
-                S3-compatible bucket below.
-              </p>
-            )}
+            <button type="button" className="btn" disabled={!!busy} onClick={props.onAddLocal}>
+              {busy === "local" ? "Opening…" : "Choose folder…"}
+            </button>
+            <p className="muted small">
+              {features.fileSystemAccess
+                ? "This browser keeps access across sessions and can write thumbnails back if needed."
+                : "This browser supports read-only folders; you'll reconnect the folder each session (originals are read on demand). Folder selection is limited on iOS."}
+            </p>
           </div>
 
           <S3Form busy={busy} onSubmit={props.onAddS3} />

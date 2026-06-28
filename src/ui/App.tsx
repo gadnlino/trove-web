@@ -9,6 +9,8 @@ import {
   addLocalFolderMount,
   addS3Mount,
   initLibrary,
+  needsReconnect,
+  reconnectSnapshotMount,
   removeMountFull,
   startScan,
 } from "../app/library";
@@ -67,6 +69,13 @@ export function App() {
 
   const runScan = useCallback(
     async (mount: MountRecord) => {
+      if (needsReconnect(mount)) {
+        setScanInfo((p) => ({
+          ...p,
+          [mount.id]: { status: "needs reconnect", count: p[mount.id]?.count ?? 0 },
+        }));
+        return;
+      }
       setScanInfo((p) => ({ ...p, [mount.id]: { status: "scanning", count: 0 } }));
       try {
         await startScan(mount, (count) =>
@@ -88,6 +97,33 @@ export function App() {
     [reloadItems]
   );
 
+  const runReconnect = useCallback(
+    async (mount: MountRecord) => {
+      try {
+        setScanInfo((p) => ({ ...p, [mount.id]: { status: "scanning", count: 0 } }));
+        await reconnectSnapshotMount(mount, (count) =>
+          setScanInfo((p) => ({ ...p, [mount.id]: { status: "scanning", count } }))
+        );
+        setScanInfo((p) => ({
+          ...p,
+          [mount.id]: { status: "done", count: p[mount.id]?.count ?? 0 },
+        }));
+        await reloadItems();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [reloadItems]
+  );
+
+  const reconnectById = useCallback(
+    async (mountId: string) => {
+      const mount = mounts.find((m) => m.id === mountId);
+      if (mount) await runReconnect(mount);
+    },
+    [mounts, runReconnect]
+  );
+
   // Initial load: handle any OAuth redirect, load library, resume scans.
   useEffect(() => {
     (async () => {
@@ -96,6 +132,13 @@ export function App() {
       await reloadMounts();
       await reloadItems();
       for (const mount of await listMounts()) {
+        if (needsReconnect(mount)) {
+          setScanInfo((p) => ({
+            ...p,
+            [mount.id]: { status: "needs reconnect", count: 0 },
+          }));
+          continue;
+        }
         const state = await getScanState(mount.id);
         if (!state || state.status !== "done") {
           void runScan(mount);
@@ -246,7 +289,13 @@ export function App() {
         )}
       </main>
 
-      {selected && <MediaViewer item={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <MediaViewer
+          item={selected}
+          onClose={() => setSelected(null)}
+          onReconnect={reconnectById}
+        />
+      )}
       {showSettings && (
         <Settings
           mounts={mounts}
@@ -258,6 +307,7 @@ export function App() {
           onConnectDrive={onConnectDrive}
           onRemove={onRemove}
           onRescan={runScan}
+          onReconnect={runReconnect}
           onClose={() => setShowSettings(false)}
         />
       )}

@@ -7,11 +7,13 @@ import { formatBytes, formatDate } from "./format";
 interface MediaViewerProps {
   item: MediaItem;
   onClose: () => void;
+  onReconnect?: (mountId: string) => void;
 }
 
-export function MediaViewer({ item, onClose }: MediaViewerProps) {
+export function MediaViewer({ item, onClose, onReconnect }: MediaViewerProps) {
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reconnectNeeded, setReconnectNeeded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +38,12 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
           if (!cancelled) setSrc(objectUrl);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (cancelled) return;
+        if (err instanceof Error && err.name === "SnapshotNotConnectedError") {
+          setReconnectNeeded(true);
+        } else {
+          setError(err instanceof Error ? err.message : String(err));
+        }
       }
     })();
 
@@ -61,7 +68,21 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
           ✕
         </button>
         <div className="viewer-stage">
-          {error ? (
+          {reconnectNeeded ? (
+            <div className="viewer-error">
+              <p>This folder isn't connected in this session.</p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  onReconnect?.(item.mountId);
+                  onClose();
+                }}
+              >
+                Reconnect folder
+              </button>
+            </div>
+          ) : error ? (
             <div className="viewer-error">{error}</div>
           ) : !src ? (
             <div className="viewer-loading">Loading…</div>
